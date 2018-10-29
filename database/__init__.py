@@ -17,8 +17,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from db import DbConnection
-from config import ConfigOptions, BROptions
+#from db import DbConnection
+#from config import ConfigOptions, BROptions
+import requests
+from auth import auth
 
 
 class database:
@@ -26,9 +28,9 @@ class database:
 
     def __init__(self):
         ''' Initialitation method '''
-        self.config = ConfigOptions()
-        self.br = BROptions()
-        self.conn = DbConnection(self.config.dbuser, self.config.dbpassword, self.config.dbname, self.config.dbhost, self.config.dbport)
+        #self.config = ConfigOptions()
+        #self.br = BROptions()
+        #self.conn = DbConnection(self.config.dbuser, self.config.dbpassword, self.config.dbname, self.config.dbhost, self.config.dbport)
         self.production = 'production'
         self.staging = 'staging'
         self.development = 'development'
@@ -42,9 +44,23 @@ class database:
 
     def get_business(self):
         ''' Bussiness definitions '''
-        business = self.conn.query("SELECT b.id as business_id, b.name as businessname FROM business b WHERE active IS TRUE")
+        a = auth()
+        print(a.user)
+        mytoken = a.get_token()
 
-        return business
+        try:
+            business = requests.get(
+                a.dbrepo_url + '/api/business',
+                headers={
+                    'authorization': 'bearer ' + mytoken,
+                    'content-type': "application/json"
+                }
+            )
+            return business.json()
+        except requests.exceptions.RequestException as e:
+            print(e)
+
+        return {}
 
     def get_clusters(self, business, environment=None):
         ''' Get business clusters '''

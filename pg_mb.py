@@ -143,13 +143,17 @@ def main():
     )
 
     options = p.parse_args()
+    print(options)
 
     #testing = options.test
 
-    db = database()
+    # Backup a particular database.
+    if hasattr(options, 'database') is False:
+        db = database()
+        print(db.get_business())
 
     # Process all backups.
-    pg_batman(db, 0)
+    #pg_batman(db, 0)
 
     # If testing, restore backups.
     #if testing:
