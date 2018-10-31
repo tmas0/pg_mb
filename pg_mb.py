@@ -19,17 +19,19 @@
 
 #from db import DbConnection
 from database import database
+from backup import backup
 #from backup import Backup
 #from recovery import Restore
 #from mail import Mail
 import sys
 import argparse
+import logging
 
 if sys.version_info < (3, 5):
     raise SystemExit('ERROR: pg_mb needs at least python 3.5 to work')
 
 
-def pg_batman(db, action):
+def pg_batman(db, action, logger):
     """
     Looping all clusters and databases.
 
@@ -42,66 +44,81 @@ def pg_batman(db, action):
 
     # Get all business.
     companies = db.get_business()
-    for business_id, business in companies:
+    logger.debug('Get all business')
+    for business_id, business in companies['data']:
+        logger.info('Process business: %s - %s' % (business_id, business))
+
         # Get backups directory for business configuration.
-        backupdir = db.get_configuration(business, 'backupdir')
+        backupdir = db.get_config(business_id, 'backupdir')
+        backupdir = backupdir['data'][0] + '/' + business
+        logger.info('Backup root directory: %s' % backupdir)
 
         # Backup manager.
-        bck = Backup(backupdir)
+        #bck = Backup(backupdir)
 
         # Get all PostgreSQL clusters. Return QA domain. Does not change.
-        clusters = db.get_clusters(business, db.production)
-        for cluster_id, clustername, qadomain in clusters:
-            # Get cluster databases.
-            databases = db.get_databases(clustername)
-            for database_id, database in databases:
-                # Determine scheduled backup.
-                schedulers = bck.get_scheduler()
-                for scheduler in schedulers:
-                    if action == 0:
-                        # Run backup.
-                        bck.dump(
-                            scheduler,
-                            business,
-                            clustername,
-                            cluster_id,
-                            database,
-                            database_id,
-                            db
-                        )
+        clusters = db.get_clusters(business_id)
+        logger.debug('Get all clusters')
+        for cluster_id, clustername in clusters['data']:
+            logger.info('Process cluster: %s - %s' % (cluster_id, clustername))
 
-                    if action == 1:
-                        # Get lastest daily backup.
-                        backupfile = bck.get_last_backupfile(
-                            business,
-                            clustername,
-                            bck.daily,
-                            database
-                        )
+            # Get cluster databases.
+            logger.debug('Get all databases')
+            databases = db.get_databases(cluster_id, db.production)
+            for database_id, dbname in databases['data']:
+                logger.info(
+                    'Process database: %s - %s' % (database_id, dbname)
+                )
+
+                # Determine scheduled backup.
+                logger.debug('Get schedulers')
+                schedulers = backup.get_scheduler()
+                for scheduler in schedulers:
+                    logger.info('%s backup' % (scheduler.capitalize()))
+        #            if action == 0:
+        #                # Run backup.
+        #                bck.dump(
+         #                   scheduler,
+          #                  business,
+           #                 clustername,
+            #                cluster_id,
+             #               database,
+              #              database_id,
+               #             db
+                #        )
+
+        #            if action == 1:
+        #                # Get lastest daily backup.
+        #                backupfile = bck.get_last_backupfile(
+        ##                    business,
+        #                    clustername,
+        #                    bck.daily,
+        #                    database
+        #                )
 
                         # If haven't backup, not restore.
-                        if backupfile is not None:
-                            res = Restore()
+        #                if backupfile is not None:
+        #                    res = Restore()
 
                             # Clean QA database.
-                            db.drop_and_create(qadomain, database)
+        #                    db.drop_and_create(qadomain, database)
 
                             # Import lastest backup.
-                            res.import_db(
-                                qadomain,
-                                cluster_id,
-                                database,
-                                database_id,
-                                backupfile,
-                                db
-                            )
-                        else:
-                            db.insert_recovery_state(
-                                cluster_id,
-                                database_id,
-                                False,
-                                'Backup file not found'
-                            )
+        #                    res.import_db(
+        #                        qadomain,
+        #                        cluster_id,
+        #                        database,
+        #                        database_id,
+        #                        backupfile,
+        #                        db
+        #                    )
+        #                else:
+        #                    db.insert_recovery_state(
+        #                        cluster_id,
+        #                        database_id,
+        #                        False,
+        #                        'Backup file not found'
+        #                    )
 
 
 def main():
@@ -115,7 +132,6 @@ def main():
     )
 
     p.add_argument(
-        '-v',
         '--version',
         action='version',
         version='1.0\n\npg_mb'
@@ -126,6 +142,12 @@ def main():
         help='Test backup on QA server.',
         default=True,
         action='store_true'
+    )
+    p.add_argument(
+        '-v',
+        '--verbose',
+        action="count",
+        help='Verbose mode.',
     )
     group = p.add_subparsers(help='Particular database backup')
     parser_db = group.add_parser('db', help='Particular database')
@@ -143,17 +165,41 @@ def main():
     )
 
     options = p.parse_args()
-    print(options)
 
+    # Create logger
+    logger = logging.getLogger('pg_mb')
+    ch = logging.StreamHandler()
+    if options.verbose is None:
+        logger.setLevel(logging.ERROR)
+        ch.setLevel(logging.ERROR)
+    elif options.verbose == 1:
+        logger.setLevel(logging.WARNING)
+        ch.setLevel(logging.WARNING)
+    elif options.verbose == 2:
+        logger.setLevel(logging.INFO)
+        ch.setLevel(logging.INFO)
+    else:
+        logger.setLevel(logging.DEBUG)
+        ch.setLevel(logging.DEBUG)
+
+    # Create formatter
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+
+    # Add formatter to ch
+    ch.setFormatter(formatter)
+
+    # Add ch to logger
+    logger.addHandler(ch)
     #testing = options.test
 
     # Backup a particular database.
     if hasattr(options, 'database') is False:
         db = database()
-        print(db.get_business())
 
-    # Process all backups.
-    #pg_batman(db, 0)
+        # Process all backups.
+        pg_batman(db, 0, logger)
 
     # If testing, restore backups.
     #if testing:

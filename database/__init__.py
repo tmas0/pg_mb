@@ -21,6 +21,7 @@
 #from config import ConfigOptions, BROptions
 import requests
 from auth import auth
+from api import api
 
 
 class database:
@@ -44,42 +45,23 @@ class database:
 
     def get_business(self):
         ''' Bussiness definitions '''
-        a = auth()
-        print(a.user)
-        mytoken = a.get_token()
 
         try:
-            business = requests.get(
-                a.dbrepo_url + '/api/business',
-                headers={
-                    'authorization': 'bearer ' + mytoken,
-                    'content-type': "application/json"
-                }
-            )
-            return business.json()
-        except requests.exceptions.RequestException as e:
+            return api.get('business')
+        except Exception as e:
             print(e)
 
         return {}
 
-    def get_clusters(self, business, environment=None):
+    def get_clusters(self, cluster):
         ''' Get business clusters '''
-        if environment is None:
-            environment = self.production
 
-        query = """SELECT DISTINCT c.id AS cluster_id
-                   , c.name AS clustername
-                   , c.domainprefix || '.' || coalesce(e.domainprefix, '') || c.name || '.' || b.domain AS domain
-                   FROM dba.business b
-                   INNER JOIN dba.cluster c ON b.id = c.business_id AND c.active IS TRUE
-                   INNER JOIN dba.deployment d ON c.id = d.cluster_id AND d.active IS TRUE
-                   INNER JOIN dba.environment e ON d.environment_id = e.id AND e.name = %s AND e.active IS TRUE
-                   WHERE b.name = %s
-                     AND b.active IS TRUE"""
+        try:
+            return api.get('cluster/' + str(cluster))
+        except Exception as e:
+            print(e)
 
-        clusters = self.conn.query(query, (environment, business,))
-
-        return clusters
+        return {}
 
     def get_slave_node(self, cluster):
         ''' Return master host '''
@@ -111,30 +93,27 @@ class database:
 
         return False
 
-    def get_databases(self, cluster):
+    def get_databases(self, cluster, environment=None):
         ''' Return this cluster databases '''
+        if environment is None:
+            environment = self.production
 
-        query = """SELECT DISTINCT d.id AS database_id, d.name AS database 
-                   FROM dba.database d
-                   INNER JOIN dba.deployment de ON d.id = de.database_id AND de.active IS TRUE
-                   INNER JOIN dba.cluster c ON c.id = de.cluster_id AND c.name = %s AND c.active IS TRUE
-                   WHERE d.active IS TRUE"""
-        dbs = self.conn.query(query, (cluster,))
+        try:
+            return api.get('database/' + str(cluster) + '/' + environment)
+        except Exception as e:
+            print(e)
 
-        return dbs
+        return {}
 
-    def get_configuration(self, business, rule):
+    def get_config(self, business, rule):
         ''' Return configuration '''
 
-        query = """SELECT r.value
-                   FROM dba.rule r
-                   INNER JOIN dba.business b ON r.business_id = b.id AND b.name = %s AND b.active IS TRUE
-                   WHERE r.active IS TRUE
-                     AND r.name = %s"""
+        try:
+            return api.get('rule/' + str(business) + '/' + rule)
+        except Exception as e:
+            print(e)
 
-        config = self.conn.query(query, (business, rule,))
-
-        return config[0][0]
+        return {}
 
     def insert_recovery_state(self, cluster_id, database_id, state, stderr):
         ''' Insert recovery state '''
