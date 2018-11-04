@@ -75,17 +75,18 @@ def pg_batman(db, action, logger):
                 schedulers = backup.get_scheduler()
                 for scheduler in schedulers:
                     logger.info('%s backup' % (scheduler.capitalize()))
-        #            if action == 0:
-        #                # Run backup.
-        #                bck.dump(
-         #                   scheduler,
-          #                  business,
-           #                 clustername,
-            #                cluster_id,
-             #               database,
-              #              database_id,
-               #             db
-                #        )
+                    if action == 0:
+                        # Run backup.
+                        backup.dump(
+                            logger,
+                            scheduler,
+                            clustername,
+                            cluster_id,
+                            dbname,
+                            database_id,
+                            db,
+                            backupdir
+                        )
 
         #            if action == 1:
         #                # Get lastest daily backup.

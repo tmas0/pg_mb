@@ -22,6 +22,7 @@ import os, time, errno
 import shlex, subprocess
 import shutil
 from stat import S_ISREG, ST_CTIME, ST_MODE
+from api import api
 
 
 class backup:
@@ -29,6 +30,9 @@ class backup:
     daily = 'daily'
     weekly = 'weekly'
     monthly = 'monthly'
+    retention_daily = 7
+    retention_weekly = 5
+    retention_monthly = 12
 
     def get_scheduler():
         ''' Return list of scheduler '''
@@ -45,59 +49,158 @@ class backup:
 
         return schedulers
 
-    def get_path(basedir, business, cluster, scheduled, dbname):
+    def get_path(logger, basedir, cluster, scheduled, dbname):
         ''' Return full backup path '''
         # Make path.
-        path = os.path.join(basedir, business, cluster, scheduled, dbname)
+        path = os.path.join(basedir, cluster, scheduled, dbname)
+        logger.info('Backup path: %s' % path)
 
         # If not exists, create.
         if not os.path.exists(path):
             try:
                 os.makedirs(path)
             except OSError as exc:  # Guard against race condition
+                # If exception is not directory already exists.
                 if exc.errno != errno.EEXIST:
                     raise
+                else:
+                    logger.debug('Directory %s already exists.' % path)
         return path
 
-    def get_backupfile(basedir, business, cluster, scheduled, dbname):
+    def get_date():
+        ''' Return date part for backup file '''
+        return dt.datetime.now().strftime("%Y-%m-%d_%Hh%Mm")
+
+    def get_filename(scheduled, dbname):
+        ''' Return full filename '''
+        return scheduled + '_' + dbname + '_' + backup.get_date() + '.sql'
+
+    def get_backupfile(logger, basedir, cluster, scheduled, dbname):
         ''' Return full backup path and file '''
         return os.path.join(
             backup.get_path(
+                logger,
                 basedir,
-                business,
                 cluster,
                 scheduled,
                 dbname
             ),
-            self.get_filename(
+            backup.get_filename(
                 scheduled,
                 dbname
             )
         )
 
-    def dump(scheduled, business, cluster, cluster_id, dbname, database_id, dbconn):
-        ''' Dump database of one cluster '''
-
-        # Determine full path and name for backupfile.
-        backupfile = backup.get_backupfile(
-            business,
+    def get_oldest_backupfile(logger, cluster, scheduled, dbname, backupdir):
+        ''' Return last created backupfile '''
+        dirpath = backup.get_path(
+            logger,
+            backupdir,
             cluster,
             scheduled,
             dbname
         )
+        logger.debug('get_oldest_backupfile, Path: %s' % dirpath)
+
+        try:
+            mtime = lambda f: os.stat(os.path.join(dirpath, f)).st_mtime
+        except OSError:
+            logger.critical('Cannot determine mtime')
+            pass
+        finally:
+            mtime = None
+        entries = list(sorted(os.listdir(dirpath), key=mtime))
+
+        file = None
+        if scheduled == backup.daily and len(entries) > backup.retention_daily:
+            file = entries[0]
+        if (scheduled == backup.weekly and
+                len(entries) > backup.retention_weekly):
+            file = entries[0]
+        if (scheduled == backup.monthly and
+                len(entries) > backup.retention_monthly):
+            file = entries[0]
+
+        if file is not None:
+            return dirpath + '/' + file
+
+        return None
+
+    def backup_maintenance(logger, cluster, scheduled, dbname, backupdir):
+        ''' Backup maintenance '''
+
+        # Get backup file candidate to remove.
+        obsolet_backupfile = backup.get_oldest_backupfile(
+            logger,
+            cluster,
+            scheduled,
+            dbname,
+            backupdir
+        )
+        logger.debug('Obsolet backup: %s' % obsolet_backupfile)
+
+        if obsolet_backupfile is not None:
+            try:
+                os.remove(obsolet_backupfile)
+            except OSError:
+                logger.error('Cannot remove %s file' % obsolet_backupfile)
+                pass
+
+    def dump(logger, scheduled, cluster, cluster_id, dbname, database_id, dbconn, backupdir):
+        ''' Dump database of one cluster '''
+
+        # Determine full path and name for backupfile.
+        backupfile = backup.get_backupfile(
+            logger,
+            backupdir,
+            cluster,
+            scheduled,
+            dbname
+        )
+        logger.info('Backup file: %s' % backupfile)
 
         # Maintenance backup files.
-        self.backup_maintenance(business, cluster, scheduled, dbname)
+        backup.backup_maintenance(
+            logger,
+            cluster,
+            scheduled,
+            dbname,
+            backupdir
+        )
 
         # On make daily backup. Others, copy only file.
-        if scheduled == self.daily:
+        if scheduled == backup.daily:
             # Determine standby node from cluster
-            standby = dbconn.get_slave_node(cluster)
+            try:
+                standby = api.get('standby/' + str(cluster_id))
+                logger.debug('Standby node: %s' % standby['data'])
+            except Exception as e:
+                print(e)
+
+            standby = standby['data']
+
             # If standby node is down or if standalone topology.
             if not standby:
                 standby = cluster
 
-            command = 'pg_dump -U%s -h %s -p %s -Fc -d %s -f %s' % (self.backup.dbuser, standby, self.backup.dbport, dbname, backupfile)
+            # Get backup user.
+            try:
+                backup_user = os.getenv('PGMB_EDBUSER', 'postgres')
+                backup_dbport = os.getenv('PGMB_EDBPORT', 5432)
+            except os.error:
+                print(
+                    """User not set.
+                       Use export=PGMB_EDBUSER=your_username;"""
+                )
+
+            command = 'pg_dump -U%s -h %s -p %s -Fc -d %s -f %s' % (
+                backup_user,
+                standby,
+                backup_dbport,
+                dbname,
+                backupfile
+            )
+            logger.debug(command)
 
             command = shlex.split(command)
 
@@ -118,24 +221,24 @@ class backup:
             stdoutdata, stderrdata = ps.communicate()
 
             state = False
-            if stderrdata is None or len(stderrdata) == 0:
-                state = True
-                stderrdata = None
+            #if stderrdata is None or len(stderrdata) == 0:
+            #    state = True
+            #    stderrdata = None
 
-            statinfo = os.stat(backupfile)
-            dumpsize = statinfo.st_size
+            #statinfo = os.stat(backupfile)
+            #dumpsize = statinfo.st_size
 
             end = dt.datetime.now()
             difference = end - start
             seconds = difference.total_seconds()
 
-            dbconn.insert_backup_state(cluster_id, database_id, scheduled, state, stderrdata, dumpsize,int(seconds))
-        else:
+            #dbconn.insert_backup_state(cluster_id, database_id, scheduled, state, stderrdata, dumpsize,int(seconds))
+        #else:
             # Get daily lastest backup.
-            dailybackupfile = self.get_oldest_backupfile(business, cluster, self.daily, dbname)
-            try:
-                shutil.copyfile(dailybackupfile, backupfile)
-                dbconn.insert_backup_state(cluster_id, database_id, scheduled, state, stderrdata)
-            except (IOError, shutil.Error) as e:
-                dbconn.insert_backup_state(cluster_id, database_id, scheduled, False, e)
-                pass
+            #dailybackupfile = self.get_oldest_backupfile(business, cluster, self.daily, dbname)
+            #try:
+            #    shutil.copyfile(dailybackupfile, backupfile)
+            #    dbconn.insert_backup_state(cluster_id, database_id, scheduled, state, stderrdata)
+            #except (IOError, shutil.Error) as e:
+            #    dbconn.insert_backup_state(cluster_id, database_id, scheduled, False, e)
+            #    pass
