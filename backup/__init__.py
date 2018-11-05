@@ -146,7 +146,7 @@ class backup:
                 logger.error('Cannot remove %s file' % obsolet_backupfile)
                 pass
 
-    def dump(logger, scheduled, cluster, cluster_id, dbname, database_id, dbconn, backupdir):
+    def dump(logger, scheduled, cluster, cluster_id, dbname, database_id, backupdir):
         ''' Dump database of one cluster '''
 
         # Determine full path and name for backupfile.
@@ -215,30 +215,83 @@ class backup:
                     stderr=subprocess.PIPE
                 )
             except OSError as e:
-                dbconn.insert_backup_state(cluster_id, database_id, scheduled, False, e)
+                try:
+                    data = {}
+                    data['cluster_id'] = cluster_id
+                    data['database_id'] = database_id
+                    data['scheduled'] = scheduled
+                    data['state'] = False
+                    data['info'] = e
+                    response = api.post('backup/logging',)
+                    logger.debug('Inserted backup logging: %s' % response)
+                except Exception as e:
+                    print(e)
+                    pass
                 pass
 
             stdoutdata, stderrdata = ps.communicate()
 
             state = False
-            #if stderrdata is None or len(stderrdata) == 0:
-            #    state = True
-            #    stderrdata = None
+            if stderrdata is None or len(stderrdata) == 0:
+                state = True
+                stderrdata = None
 
-            #statinfo = os.stat(backupfile)
-            #dumpsize = statinfo.st_size
+            statinfo = os.stat(backupfile)
+            dumpsize = statinfo.st_size
 
             end = dt.datetime.now()
             difference = end - start
             seconds = difference.total_seconds()
 
-            #dbconn.insert_backup_state(cluster_id, database_id, scheduled, state, stderrdata, dumpsize,int(seconds))
-        #else:
+            try:
+                data = {}
+                data['cluster_id'] = cluster_id
+                data['database_id'] = database_id
+                data['scheduled'] = scheduled
+                data['state'] = False
+                data['info'] = e
+                data['size'] = dumpsize
+                data['duration'] = int(seconds)
+                response = api.post('backup/logging',)
+                logger.debug('Inserted backup logging: %s' % response)
+            except Exception as e:
+                print(e)
+                pass
+        else:
             # Get daily lastest backup.
-            #dailybackupfile = self.get_oldest_backupfile(business, cluster, self.daily, dbname)
-            #try:
-            #    shutil.copyfile(dailybackupfile, backupfile)
-            #    dbconn.insert_backup_state(cluster_id, database_id, scheduled, state, stderrdata)
-            #except (IOError, shutil.Error) as e:
-            #    dbconn.insert_backup_state(cluster_id, database_id, scheduled, False, e)
-            #    pass
+            dailybackupfile = backup.get_oldest_backupfile(
+                logger,
+                cluster,
+                backup.daily,
+                dbname,
+                backupdir
+            )
+
+            try:
+                shutil.copyfile(dailybackupfile, backupfile)
+                try:
+                    data = {}
+                    data['cluster_id'] = cluster_id
+                    data['database_id'] = database_id
+                    data['scheduled'] = scheduled
+                    data['state'] = state
+                    data['info'] = stderrdata
+                    response = api.post('backup/logging',)
+                    logger.debug('Inserted backup logging: %s' % response)
+                except Exception as e:
+                    print(e)
+                    pass
+            except (IOError, shutil.Error) as e:
+                try:
+                    data = {}
+                    data['cluster_id'] = cluster_id
+                    data['database_id'] = database_id
+                    data['scheduled'] = scheduled
+                    data['state'] = False
+                    data['info'] = e
+                    response = api.post('backup/logging',)
+                    logger.debug('Inserted backup logging: %s' % response)
+                except Exception as e:
+                    print(e)
+                    pass
+                pass

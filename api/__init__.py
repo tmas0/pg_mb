@@ -42,3 +42,23 @@ class api:
             print(e)
 
         return {}
+
+    @staticmethod
+    def post(key, data):
+        a = auth()
+        mytoken = a.get_token()
+
+        try:
+            response = requests.post(
+                a.dbrepo_url + '/api/' + key,
+                headers={
+                    'authorization': 'bearer ' + mytoken,
+                    'content-type': "application/json"
+                },
+                data=data
+            )
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(e)
+
+        return {}
