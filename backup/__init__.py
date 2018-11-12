@@ -251,7 +251,7 @@ class backup:
                 data['cluster_id'] = cluster_id
                 data['database_id'] = database_id
                 data['scheduled'] = scheduled
-                data['state'] = True
+                data['state'] = state
                 data['size'] = dumpsize
                 data['duration'] = int(seconds)
                 response = api.post('backup/logging', data)
@@ -270,30 +270,54 @@ class backup:
                 backupdir
             )
 
-            try:
-                shutil.copyfile(dailybackupfile, backupfile)
+            if dailybackupfile is not None:
+
                 try:
-                    data = {}
-                    data['cluster_id'] = cluster_id
-                    data['database_id'] = database_id
-                    data['scheduled'] = scheduled
-                    data['state'] = True
-                    response = api.post('backup/logging', data)
-                    logger.debug('Inserted backup logging: %s' % response)
-                except Exception as err:
-                    print(err)
+                    start = dt.datetime.now()
+                    shutil.copyfile(dailybackupfile, backupfile)
+                    statinfo = os.stat(backupfile)
+                    dumpsize = statinfo.st_size
+
+                    end = dt.datetime.now()
+                    difference = end - start
+                    seconds = difference.total_seconds()
+                    try:
+                        data = {}
+                        data['cluster_id'] = cluster_id
+                        data['database_id'] = database_id
+                        data['scheduled'] = scheduled
+                        data['state'] = True
+                        data['size'] = dumpsize
+                        data['duration'] = int(seconds)
+                        response = api.post('backup/logging', data)
+                        logger.debug('Inserted backup logging: %s' % response)
+                    except Exception as err:
+                        print(err)
+                        pass
+                except (IOError, shutil.Error) as err:
+                    try:
+                        data = {}
+                        data['cluster_id'] = cluster_id
+                        data['database_id'] = database_id
+                        data['scheduled'] = scheduled
+                        data['state'] = False
+                        data['info'] = err
+                        response = api.post('backup/logging', data)
+                        logger.debug('Inserted backup logging: %s' % response)
+                    except Exception as e:
+                        print(e)
+                        pass
                     pass
-            except (IOError, shutil.Error) as err:
+            else:
                 try:
                     data = {}
                     data['cluster_id'] = cluster_id
                     data['database_id'] = database_id
                     data['scheduled'] = scheduled
                     data['state'] = False
-                    data['info'] = err
+                    data['info'] = 'Cannot find backupfile'
                     response = api.post('backup/logging', data)
                     logger.debug('Inserted backup logging: %s' % response)
                 except Exception as e:
                     print(e)
                     pass
-                pass
