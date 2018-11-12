@@ -177,7 +177,7 @@ class backup:
             except Exception as e:
                 print(e)
 
-            standby = standby['data'][0]
+            standby = standby['data']
 
             # If standby node is down or if standalone topology.
             if not standby:
