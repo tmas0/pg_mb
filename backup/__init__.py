@@ -278,8 +278,8 @@ class backup:
                     data['info'] = stderrdata
                     response = api.post('backup/logging',)
                     logger.debug('Inserted backup logging: %s' % response)
-                except Exception as e:
-                    print(e)
+                except Exception as err:
+                    print(err)
                     pass
             except (IOError, shutil.Error) as e:
                 try:
