@@ -277,14 +277,13 @@ class backup:
                     data['cluster_id'] = cluster_id
                     data['database_id'] = database_id
                     data['scheduled'] = scheduled
-                    data['state'] = state
-                    data['info'] = stderrdata
-                    response = api.post('backup/logging',)
+                    data['state'] = True
+                    response = api.post('backup/logging', data)
                     logger.debug('Inserted backup logging: %s' % response)
                 except Exception as err:
                     print(err)
                     pass
-            except (IOError, shutil.Error) as e:
+            except (IOError, shutil.Error) as err:
                 try:
                     data = {}
                     data['cluster_id'] = cluster_id
@@ -292,7 +291,7 @@ class backup:
                     data['scheduled'] = scheduled
                     data['state'] = False
                     data['info'] = err
-                    response = api.post('backup/logging',)
+                    response = api.post('backup/logging', data)
                     logger.debug('Inserted backup logging: %s' % response)
                 except Exception as e:
                     print(e)
