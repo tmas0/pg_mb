@@ -84,7 +84,6 @@ def pg_batman(db, action, logger):
                             cluster_id,
                             dbname,
                             database_id,
-                            db,
                             backupdir
                         )
 
