@@ -195,7 +195,7 @@ class backup:
 
             command = 'pg_dump -U%s -h %s -p %s -Fc -d %s -f %s' % (
                 backup_user,
-                standby,
+                standby['data'],
                 backup_dbport,
                 dbname,
                 backupfile
@@ -214,14 +214,14 @@ class backup:
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE
                 )
-            except OSError as e:
+            except OSError as err:
                 try:
                     data = {}
                     data['cluster_id'] = cluster_id
                     data['database_id'] = database_id
                     data['scheduled'] = scheduled
                     data['state'] = False
-                    data['info'] = e
+                    data['info'] = err
                     response = api.post('backup/logging',)
                     logger.debug('Inserted backup logging: %s' % response)
                 except Exception as e:
