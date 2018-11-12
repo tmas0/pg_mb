@@ -18,6 +18,7 @@
 
 
 import requests
+import json
 from auth import auth
 
 
@@ -51,11 +52,11 @@ class api:
         try:
             response = requests.post(
                 a.dbrepo_url + '/api/' + key,
+                data=json.dumps(data),
                 headers={
                     'authorization': 'bearer ' + mytoken,
                     'content-type': "application/json"
-                },
-                data=data
+                }
             )
             return response.json()
         except requests.exceptions.RequestException as e:
