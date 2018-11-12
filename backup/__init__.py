@@ -177,7 +177,7 @@ class backup:
             except Exception as e:
                 print(e)
 
-            standby = standby['data']
+            standby = standby['data'][0]
 
             # If standby node is down or if standalone topology.
             if not standby:
@@ -195,7 +195,7 @@ class backup:
 
             command = 'pg_dump -U%s -h %s -p %s -Fc -d %s -f %s' % (
                 backup_user,
-                standby['data'],
+                standby,
                 backup_dbport,
                 dbname,
                 backupfile
