@@ -288,7 +288,7 @@ class backup:
                     data['database_id'] = database_id
                     data['scheduled'] = scheduled
                     data['state'] = False
-                    data['info'] = e
+                    data['info'] = err
                     response = api.post('backup/logging',)
                     logger.debug('Inserted backup logging: %s' % response)
                 except Exception as e:
