@@ -222,7 +222,7 @@ class backup:
                     data['scheduled'] = scheduled
                     data['state'] = False
                     data['info'] = err
-                    response = api.post('backup/logging',)
+                    response = api.post('backup/logging', data)
                     logger.debug(
                         'Inserted backup error logging: %s' % response
                     )
@@ -254,7 +254,7 @@ class backup:
                 data['state'] = True
                 data['size'] = dumpsize
                 data['duration'] = int(seconds)
-                response = api.post('backup/logging',)
+                response = api.post('backup/logging', data)
                 logger.debug('Inserted backup logging: %s' % response)
             except Exception as e:
                 print('Cannot insert log data')
