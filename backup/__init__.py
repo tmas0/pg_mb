@@ -223,8 +223,11 @@ class backup:
                     data['state'] = False
                     data['info'] = err
                     response = api.post('backup/logging',)
-                    logger.debug('Inserted backup logging: %s' % response)
+                    logger.debug(
+                        'Inserted backup error logging: %s' % response
+                    )
                 except Exception as e:
+                    print('Cannot insert error log data')
                     print(e)
                     pass
                 pass
@@ -248,13 +251,13 @@ class backup:
                 data['cluster_id'] = cluster_id
                 data['database_id'] = database_id
                 data['scheduled'] = scheduled
-                data['state'] = False
-                data['info'] = e
+                data['state'] = True
                 data['size'] = dumpsize
                 data['duration'] = int(seconds)
                 response = api.post('backup/logging',)
                 logger.debug('Inserted backup logging: %s' % response)
             except Exception as e:
+                print('Cannot insert log data')
                 print(e)
                 pass
         else:
