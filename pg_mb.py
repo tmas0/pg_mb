@@ -17,12 +17,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-#from db import DbConnection
 from database import database
 from backup import backup
-#from backup import Backup
-#from recovery import Restore
-#from mail import Mail
 import sys
 import argparse
 import logging
@@ -31,7 +27,7 @@ if sys.version_info < (3, 5):
     raise SystemExit('ERROR: pg_mb needs at least python 3.5 to work')
 
 
-def pg_batman(db, action, logger):
+def pg_mb(logger, action):
     """
     Looping all clusters and databases.
 
@@ -43,28 +39,25 @@ def pg_batman(db, action, logger):
     """
 
     # Get all business.
-    companies = db.get_business()
+    companies = database.get_business()
     logger.debug('Get all business')
     for business_id, business in companies['data']:
         logger.info('Process business: %s - %s' % (business_id, business))
 
         # Get backups directory for business configuration.
-        backupdir = db.get_config(business_id, 'backupdir')
+        backupdir = database.get_config(business_id, 'backupdir')
         backupdir = backupdir['data'][0] + '/' + business
         logger.info('Backup root directory: %s' % backupdir)
 
-        # Backup manager.
-        #bck = Backup(backupdir)
-
         # Get all PostgreSQL clusters. Return QA domain. Does not change.
-        clusters = db.get_clusters(business_id)
+        clusters = database.get_clusters(business_id)
         logger.debug('Get all clusters')
         for cluster_id, clustername in clusters['data']:
             logger.info('Process cluster: %s - %s' % (cluster_id, clustername))
 
             # Get cluster databases.
             logger.debug('Get all databases')
-            databases = db.get_databases(cluster_id, db.production)
+            databases = database.get_databases(cluster_id, database.production)
             for database_id, dbname in databases['data']:
                 logger.info(
                     'Process database: %s - %s' % (database_id, dbname)
@@ -119,6 +112,38 @@ def pg_batman(db, action, logger):
         #                        False,
         #                        'Backup file not found'
         #                    )
+
+
+def pg_cb(logger, cluster, db):
+    """
+    Custom backup: One cluster and one database.
+    """
+
+    # Verify cluster and database.
+    data = database.verify(cluster, db)
+    if data is not None:
+
+        # Get backup directory for business configuration.
+        backupdir = database.get_config(business_id, 'backupdir')
+        backupdir = backupdir['data'][0] + '/' + business
+        logger.info('Backup root directory: %s' % backupdir)
+
+        # Dump in special dir.
+        custom_dir = 'manual_backup'
+        logger.info('Start manual backup: Database %s; Cluster: %s' % (db, cluster))
+        # Run backup.
+        backup.dump(
+            logger,
+            custom_dir,
+            cluster,
+            cluster_id,
+            db,
+            database_id,
+            backupdir
+        )
+
+    else:
+        logger.error('Cluster or database cannot exists.')
 
 
 def main():
@@ -196,10 +221,10 @@ def main():
 
     # Backup a particular database.
     if hasattr(options, 'database') is False:
-        db = database()
-
         # Process all backups.
-        pg_batman(db, 0, logger)
+        pg_mb(logger, 0)
+    else:
+        pg_cb(logger, options.cluster, options.database)
 
     # If testing, restore backups.
     #if testing:
