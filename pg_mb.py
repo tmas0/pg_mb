@@ -122,7 +122,7 @@ def pg_cb(logger, cluster, db):
     # Verify cluster and database.
     data = database.verify(cluster, db)
     logger.debug('Verify result: %s' % data)
-    if not data or data is not None:
+    if bool(data) or data is not None:
 
         # Get backup directory for business configuration.
         backupdir = database.get_config(data['business']['id'], 'backupdir')
