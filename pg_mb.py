@@ -121,26 +121,31 @@ def pg_cb(logger, cluster, db):
 
     # Verify cluster and database.
     data = database.verify(cluster, db)
+    logger.debug('Verify result: %s' % data)
     if data is not None:
 
         # Get backup directory for business configuration.
-        backupdir = database.get_config(business_id, 'backupdir')
-        backupdir = backupdir['data'][0] + '/' + business
+        backupdir = database.get_config(data['business']['id'], 'backupdir')
+        backupdir = backupdir['data'][0] + '/' + data['business']['name']
         logger.info('Backup root directory: %s' % backupdir)
 
         # Dump in special dir.
         custom_dir = 'manual_backup'
-        logger.info('Start manual backup: Database %s; Cluster: %s' % (db, cluster))
+        logger.info(
+            'Start manual backup: Database %s; Cluster: %s'
+            % (db, cluster)
+        )
         # Run backup.
         backup.dump(
             logger,
             custom_dir,
             cluster,
-            cluster_id,
+            data['cluster']['id'],
             db,
-            database_id,
+            data['database']['id'],
             backupdir
         )
+        logger.info('Backup done')
 
     else:
         logger.error('Cluster or database cannot exists.')
