@@ -169,7 +169,7 @@ class backup:
         )
 
         # On make daily backup. Others, copy only file.
-        if scheduled == backup.daily:
+        if scheduled == backup.daily or scheduled == 'manual_backup':
             # Determine standby node from cluster
             try:
                 standby = api.get('standby/' + str(cluster_id))
