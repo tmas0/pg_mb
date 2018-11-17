@@ -167,6 +167,7 @@ class backup:
             dbname,
             backupdir
         )
+        logger.info('Finished backup maintenance')
 
         # On make daily backup. Others, copy only file.
         if scheduled == backup.daily or scheduled == 'manual_backup':
