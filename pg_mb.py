@@ -41,24 +41,30 @@ def pg_mb(logger, action):
     # Get all business.
     companies = database.get_business()
     logger.debug('Get all business')
-    for business_id, business in companies['data']:
+    for b in companies['data']:
+        business_id = b['id']
+        business = b['name']
         logger.info('Process business: %s - %s' % (business_id, business))
 
         # Get backups directory for business configuration.
         backupdir = database.get_config(business_id, 'backupdir')
-        backupdir = backupdir['data'][0] + '/' + business
+        backupdir = backupdir['data']['value'] + '/' + business
         logger.info('Backup root directory: %s' % backupdir)
 
         # Get all PostgreSQL clusters. Return QA domain. Does not change.
         clusters = database.get_clusters(business_id)
         logger.debug('Get all clusters')
-        for cluster_id, clustername in clusters['data']:
+        for c in clusters['data']:
+            cluster_id = c['id']
+            clustername = c['name']
             logger.info('Process cluster: %s - %s' % (cluster_id, clustername))
 
             # Get cluster databases.
             logger.debug('Get all databases')
             databases = database.get_databases(cluster_id, database.production)
-            for database_id, dbname in databases['data']:
+            for d in databases['data']:
+                database_id = d['id']
+                dbname = d['name']
                 logger.info(
                     'Process database: %s - %s' % (database_id, dbname)
                 )
