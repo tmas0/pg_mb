@@ -30,6 +30,7 @@ class backup:
     daily = 'daily'
     weekly = 'weekly'
     monthly = 'monthly'
+    manual = 'manual_backup'
     retention_daily = 7
     retention_weekly = 5
     retention_monthly = 12
@@ -159,17 +160,20 @@ class backup:
         )
         logger.info('Backup file: %s' % backupfile)
 
-        # Maintenance backup files.
-        backup.backup_maintenance(
-            logger,
-            cluster,
-            scheduled,
-            dbname,
-            backupdir
-        )
+        if scheduled != backup.manual:
+            # Maintenance backup files.
+            logger.info('Starting backup maintenance')
+            backup.backup_maintenance(
+                logger,
+                cluster,
+                scheduled,
+                dbname,
+                backupdir
+            )
+            logger.info('Finished backup maintenance')
 
         # On make daily backup. Others, copy only file.
-        if scheduled == backup.daily:
+        if scheduled == backup.daily or scheduled == backup.manual:
             # Determine standby node from cluster
             try:
                 standby = api.get('standby/' + str(cluster_id))

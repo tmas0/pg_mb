@@ -120,6 +120,7 @@ def pg_cb(logger, cluster, db):
     """
 
     # Verify cluster and database.
+    logger.debug('Send to verify: Cluster: %s; Database: %s' % (cluster, db))
     data = database.verify(cluster, db)
     logger.debug('Verify result: %s' % data)
     if bool(data) or data is not None:
@@ -130,7 +131,7 @@ def pg_cb(logger, cluster, db):
         logger.info('Backup root directory: %s' % backupdir)
 
         # Dump in special dir.
-        custom_dir = 'manual_backup'
+        custom_dir = backup.manual
         logger.info(
             'Start manual backup: Database %s; Cluster: %s'
             % (db, cluster)
