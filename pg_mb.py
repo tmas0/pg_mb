@@ -62,9 +62,7 @@ def pg_mb(logger, action):
             # Get cluster databases.
             logger.debug('Get all databases')
             databases = database.get_databases(cluster_id, database.production)
-            for d in databases['data']:
-                database_id = d['id']
-                dbname = d['name']
+            for database_id, dbname in databases['data']:
                 logger.info(
                     'Process database: %s - %s' % (database_id, dbname)
                 )
