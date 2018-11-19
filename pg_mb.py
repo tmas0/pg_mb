@@ -123,11 +123,11 @@ def pg_cb(logger, cluster, db):
     logger.debug('Send to verify: Cluster: %s; Database: %s' % (cluster, db))
     data = database.verify(cluster, db)
     logger.debug('Verify result: %s' % data)
-    if bool(data) or data is not None:
+    if 'data' in data or data.status_code < 400:
 
         # Get backup directory for business configuration.
-        backupdir = database.get_config(data['business']['id'], 'backupdir')
-        backupdir = backupdir['data'][0] + '/' + data['business']['name']
+        backupdir = database.get_config(data['data']['business']['id'], 'backupdir')
+        backupdir = backupdir['data'][0] + '/' + data['data']['business']['name']
         logger.info('Backup root directory: %s' % backupdir)
 
         # Dump in special dir.
@@ -141,9 +141,9 @@ def pg_cb(logger, cluster, db):
             logger,
             custom_dir,
             cluster,
-            data['cluster']['id'],
+            data['data']['cluster']['id'],
             db,
-            data['database']['id'],
+            data['data']['database']['id'],
             backupdir
         )
         logger.info('Backup done')
