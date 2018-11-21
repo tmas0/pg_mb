@@ -131,7 +131,7 @@ def pg_cb(logger, cluster, db):
 
         # Get backup directory for business configuration.
         backupdir = database.get_config(data['data']['business']['id'], 'backupdir')
-        backupdir = backupdir['data'][0] + '/' + data['data']['business']['name']
+        backupdir = backupdir['data']['value'] + '/' + data['data']['business']['name']
         logger.info('Backup root directory: %s' % backupdir)
 
         # Dump in special dir.
