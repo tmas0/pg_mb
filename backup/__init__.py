@@ -224,7 +224,7 @@ class backup:
                     data['cluster_id'] = cluster_id
                     data['database_id'] = database_id
                     data['scheduled'] = scheduled
-                    data['timecreated'] = dt.datetime.now()
+                    data['timecreated'] = str(dt.datetime.now())
                     data['state'] = False
                     data['info'] = err
                     response = api.post('backup/logging', data)
@@ -256,7 +256,7 @@ class backup:
                 data['cluster_id'] = cluster_id
                 data['database_id'] = database_id
                 data['scheduled'] = scheduled
-                data['timecreated'] = dt.datetime.now()
+                data['timecreated'] = str(dt.datetime.now())
                 data['state'] = state
                 data['size'] = dumpsize
                 data['duration'] = int(seconds)
@@ -292,7 +292,7 @@ class backup:
                         data['cluster_id'] = cluster_id
                         data['database_id'] = database_id
                         data['scheduled'] = scheduled
-                        data['timecreated'] = dt.datetime.now()
+                        data['timecreated'] = str(dt.datetime.now())
                         data['state'] = True
                         data['size'] = dumpsize
                         data['duration'] = int(seconds)
@@ -307,7 +307,7 @@ class backup:
                         data['cluster_id'] = cluster_id
                         data['database_id'] = database_id
                         data['scheduled'] = scheduled
-                        data['timecreated'] = dt.datetime.now()
+                        data['timecreated'] = str(dt.datetime.now())
                         data['state'] = False
                         data['info'] = err
                         response = api.post('backup/logging', data)
@@ -322,7 +322,7 @@ class backup:
                     data['cluster_id'] = cluster_id
                     data['database_id'] = database_id
                     data['scheduled'] = scheduled
-                    data['timecreated'] = dt.datetime.now()
+                    data['timecreated'] = str(dt.datetime.now())
                     data['state'] = False
                     data['info'] = 'Cannot find backupfile'
                     response = api.post('backup/logging', data)
